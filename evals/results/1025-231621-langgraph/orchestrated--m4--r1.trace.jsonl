@@ -1,0 +1,5 @@
+{"ts": 1792943196.3738294, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792943196.3751235, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792943259.9686651, "agent": "Orchestrator", "type": "llm_response", "content": "", "tool_calls": [{"name": "calculator", "arguments": "{'expression': '2**20'}"}]}
+{"ts": 1792943259.9695382, "agent": "Orchestrator", "type": "tool_call", "name": "calculator", "arguments": "{\"expression\": \"2**20\"}"}
+{"ts": 1792943259.970311, "agent": "Orchestrator", "type": "llm_response", "content": "1048576", "tool_calls": []}

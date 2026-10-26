@@ -1,0 +1,9 @@
+{"ts": 1792946414.252416, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792946414.2541022, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792946426.8628256, "agent": "mini-fs_write_file", "type": "tool_call", "name": "mini-fs_write_file", "arguments": "{\"path\": \"dir1/data.txt\", \"content\": \"hello-eval\"}"}
+{"ts": 1792946426.8667521, "agent": "mini-fs_write_file", "type": "tool_result", "name": "mini-fs_write_file", "preview": "written 10 chars -> dir1/data.txt"}
+{"ts": 1792946436.554707, "agent": "mini-fs_list_dir", "type": "tool_call", "name": "mini-fs_list_dir", "arguments": "{\"path\": \"dir1\"}"}
+{"ts": 1792946436.5556624, "agent": "mini-fs_read_file", "type": "tool_call", "name": "mini-fs_read_file", "arguments": "{\"path\": \"dir1/data.txt\"}"}
+{"ts": 1792946436.5567358, "agent": "mini-fs_list_dir", "type": "tool_result", "name": "mini-fs_list_dir", "preview": "file data.txt (10B)"}
+{"ts": 1792946436.5576727, "agent": "mini-fs_read_file", "type": "tool_result", "name": "mini-fs_read_file", "preview": "hello-eval"}
+{"ts": 1792946437.4555013, "agent": "Orchestrator", "type": "llm_response", "content": "[ResponseOutputText(annotations=[], text='已创建目录 dir1 及其中的 data.txt，内容恰好为 hello-eval（10 字节，无多余换行）。', type='output_text', logprobs=[])]", "tool_calls": []}

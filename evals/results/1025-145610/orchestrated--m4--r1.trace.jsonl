@@ -1,0 +1,9 @@
+{"ts": 1792912995.6737444, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792912995.6752505, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792912995.6770492, "agent": "Orchestrator", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "用计算器计算 2 的 20 次方，只回答数字。"}}
+{"ts": 1792912997.4295583, "agent": "Orchestrator", "type": "llm_retry", "attempt": 1, "delay": 15, "detail": "Error code: 429 - {'error': {'message': 'Channel rate limit reached for model', 'type': 'rate_limit_exceeded', 'param': None, 'code': 'rate_"}
+{"ts": 1792913017.449441, "agent": "Orchestrator", "type": "llm_response", "content": null, "tool_calls": [{"name": "calculator", "arguments": "{\"expression\": \"2**20\"}"}]}
+{"ts": 1792913017.4502337, "agent": "Orchestrator", "type": "tool_call", "name": "calculator", "arguments": "{\"expression\": \"2**20\"}"}
+{"ts": 1792913017.4510415, "agent": "Orchestrator", "type": "tool_result", "name": "calculator", "preview": "1048576"}
+{"ts": 1792913017.4516146, "agent": "Orchestrator", "type": "llm_request", "message_count": 4, "last_message": {"role": "tool", "tool_call_id": "chatcmpl-tool-b232afb0235668c1", "content": "1048576"}}
+{"ts": 1792913021.877294, "agent": "Orchestrator", "type": "llm_response", "content": "1048576", "tool_calls": []}

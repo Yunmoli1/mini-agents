@@ -1,0 +1,10 @@
+{"ts": 1792911556.050793, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792911556.0526934, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792911556.055647, "agent": "Solver", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "用计算器计算 2 的 20 次方，只回答数字。"}}
+{"ts": 1792911557.5598483, "agent": "Solver", "type": "llm_retry", "attempt": 1, "delay": 15, "detail": "Error code: 429 - {'error': {'message': 'Channel rate limit reached for model', 'type': 'rate_limit_exceeded', 'param': None, 'code': 'rate_"}
+{"ts": 1792911586.9384358, "agent": "Solver", "type": "llm_response", "content": null, "tool_calls": [{"name": "calculator", "arguments": "{\"expression\": \"2**20\"}"}]}
+{"ts": 1792911586.9397602, "agent": "Solver", "type": "tool_call", "name": "calculator", "arguments": "{\"expression\": \"2**20\"}"}
+{"ts": 1792911586.9411285, "agent": "Solver", "type": "tool_result", "name": "calculator", "preview": "1048576"}
+{"ts": 1792911586.9419076, "agent": "Solver", "type": "llm_request", "message_count": 4, "last_message": {"role": "tool", "tool_call_id": "chatcmpl-tool-8d0670bb824302ab", "content": "1048576"}}
+{"ts": 1792911588.3943343, "agent": "Solver", "type": "llm_retry", "attempt": 1, "delay": 15, "detail": "Error code: 429 - {'error': {'message': 'Channel rate limit reached for model', 'type': 'rate_limit_exceeded', 'param': None, 'code': 'rate_"}
+{"ts": 1792911604.2014282, "agent": "Solver", "type": "llm_response", "content": "1048576", "tool_calls": []}

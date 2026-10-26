@@ -1,0 +1,8 @@
+{"ts": 1792912900.7393703, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792912900.7407172, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792912900.7430975, "agent": "Orchestrator", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "从 1 一直加到 100，和是多少？只回答数字。"}}
+{"ts": 1792912928.0041592, "agent": "Orchestrator", "type": "llm_response", "content": null, "tool_calls": [{"name": "calculator", "arguments": "{\"expression\": \"100*101/2\"}"}]}
+{"ts": 1792912928.0051308, "agent": "Orchestrator", "type": "tool_call", "name": "calculator", "arguments": "{\"expression\": \"100*101/2\"}"}
+{"ts": 1792912928.0059571, "agent": "Orchestrator", "type": "tool_result", "name": "calculator", "preview": "5050.0"}
+{"ts": 1792912928.0065486, "agent": "Orchestrator", "type": "llm_request", "message_count": 4, "last_message": {"role": "tool", "tool_call_id": "chatcmpl-tool-9d07087338571af6", "content": "5050.0"}}
+{"ts": 1792912936.9909701, "agent": "Orchestrator", "type": "llm_response", "content": "5050", "tool_calls": []}

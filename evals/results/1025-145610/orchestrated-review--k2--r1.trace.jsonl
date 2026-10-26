@@ -1,0 +1,7 @@
+{"ts": 1792913929.065046, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792913929.0667741, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792913929.0691776, "agent": "Orchestrator", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "HTTP 状态码 404 的标准含义是什么？用不超过 10 个字回答。"}}
+{"ts": 1792913930.5750148, "agent": "Orchestrator", "type": "llm_retry", "attempt": 1, "delay": 15, "detail": "Error code: 429 - {'error': {'message': 'Channel rate limit reached for model', 'type': 'rate_limit_exceeded', 'param': None, 'code': 'rate_"}
+{"ts": 1792913946.6177175, "agent": "Orchestrator", "type": "llm_response", "content": "未找到请求资源", "tool_calls": []}
+{"ts": 1792913946.6203842, "agent": "Reviewer", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "请审查：\n\n---\n以下是参考资料：\n任务：HTTP 状态码 404 的标准含义是什么？用不超过 10 个字回答。\n\n回答：未找到请求资源"}}
+{"ts": 1792913951.891009, "agent": "Reviewer", "type": "llm_response", "content": "{\"verdict\": \"pass\", \"issues\": []}", "tool_calls": []}

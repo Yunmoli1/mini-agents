@@ -1,0 +1,4 @@
+{"ts": 1792913287.9345703, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792913287.936078, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792913287.9382145, "agent": "Orchestrator", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "TCP 和 UDP 中，哪个协议保证可靠传输？只回答协议名。"}}
+{"ts": 1792913292.6751099, "agent": "Orchestrator", "type": "llm_response", "content": "TCP", "tool_calls": []}

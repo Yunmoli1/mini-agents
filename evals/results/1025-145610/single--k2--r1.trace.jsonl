@@ -1,0 +1,4 @@
+{"ts": 1792911662.4991457, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792911662.500709, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792911662.503492, "agent": "Solver", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "HTTP 状态码 404 的标准含义是什么？用不超过 10 个字回答。"}}
+{"ts": 1792911674.3339763, "agent": "Solver", "type": "llm_response", "content": "请求的资源未找到（404 Not Found）。", "tool_calls": []}

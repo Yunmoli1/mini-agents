@@ -1,0 +1,3 @@
+{"ts": 1792946295.0041952, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792946295.0054605, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792946295.9902847, "agent": "Orchestrator", "type": "llm_response", "content": "[ResponseOutputText(annotations=[], text='TCP', type='output_text', logprobs=[])]", "tool_calls": []}

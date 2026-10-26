@@ -1,0 +1,8 @@
+{"ts": 1792913951.9586408, "agent": "MCP", "type": "mcp_event", "detail": "握手完成：server=mini-fs version=2025-06-18"}
+{"ts": 1792913951.959917, "agent": "MCP", "type": "mcp_event", "detail": "发现 3 个工具：list_dir, read_file, write_file"}
+{"ts": 1792913951.9618099, "agent": "Orchestrator", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "TCP 和 UDP 中，哪个协议保证可靠传输？只回答协议名。"}}
+{"ts": 1792913952.7986808, "agent": "Orchestrator", "type": "llm_response", "content": "TCP", "tool_calls": []}
+{"ts": 1792913952.8010013, "agent": "Reviewer", "type": "llm_request", "message_count": 2, "last_message": {"role": "user", "content": "请审查：\n\n---\n以下是参考资料：\n任务：TCP 和 UDP 中，哪个协议保证可靠传输？只回答协议名。\n\n回答：TCP"}}
+{"ts": 1792913954.26937, "agent": "Reviewer", "type": "llm_retry", "attempt": 1, "delay": 15, "detail": "Error code: 429 - {'error': {'message': 'Channel rate limit reached for model', 'type': 'rate_limit_exceeded', 'param': None, 'code': 'rate_"}
+{"ts": 1792913970.7116098, "agent": "Reviewer", "type": "llm_retry", "attempt": 2, "delay": 30, "detail": "Error code: 429 - {'error': {'message': 'Channel rate limit reached for model', 'type': 'rate_limit_exceeded', 'param': None, 'code': 'rate_"}
+{"ts": 1792914004.9471796, "agent": "Reviewer", "type": "llm_response", "content": "{\"verdict\": \"pass\", \"issues\": []}", "tool_calls": []}

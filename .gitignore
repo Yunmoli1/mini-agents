@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+runs/
+evals/results/
+blog/
+.agents/
+PUBLISH.md
+计划书.md
+项目大事记.md
+面试弹药库.md
+面试训练计划书.md
