@@ -149,6 +149,11 @@ single + orchestrated 两配置（mini 四配置数据见上一节）。
 
 ## 快速开始
 
+**Windows 一键使用**：双击 `启动.bat` —— 首次运行自动创建环境并安装依赖、
+引导配置 `.env`，菜单里选 [1] 启动控制台、[2] 跑全部离线测试。
+
+手动方式（任何平台）：
+
 ```bash
 pip install -r requirements.txt
 copy .env.example .env        # 填入你的 API Key（默认智谱 bigmodel，可换任意兼容接口）

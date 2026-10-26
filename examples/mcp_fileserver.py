@@ -75,7 +75,7 @@ def send(msg):
 def main():
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
     root.mkdir(parents=True, exist_ok=True)
-    print(f"[mini-fs] serving sandbox: {root}", file=sys.stderr, flush=True)
+    print(f"[mini-fs] 沙箱已就绪：{root}", file=sys.stderr, flush=True)
 
     for raw in sys.stdin.buffer:
         try:
@@ -88,7 +88,7 @@ def main():
             wanted = (msg.get("params") or {}).get("protocolVersion")
             version = wanted if wanted in SUPPORTED_VERSIONS else SUPPORTED_VERSIONS[-1]
             if wanted != version:
-                print(f"[mini-fs] client requested {wanted!r}, responding {version!r}",
+                print(f"[mini-fs] 客户端请求 {wanted!r}，回应 {version!r}",
                       file=sys.stderr, flush=True)
             send({"jsonrpc": "2.0", "id": req_id,
                   "result": {"protocolVersion": version,

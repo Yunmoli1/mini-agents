@@ -1,8 +1,8 @@
 # Release Notes — v1.0.0
 
-> 发布日期：2026-10-25（草稿；发布前把评测数字填进 README 后再打 tag）
+> 发布日期：草稿（发布前按 PUBLISH.md 流程打 tag；评测数字已进 README）
 
-## Highlights
+## 亮点
 
 - **多 Agent 协作框架**（从零手写，无 agent 框架依赖）：Agent 自主循环、
   并行工具调度、delegate 编排、共享黑板、批评循环
