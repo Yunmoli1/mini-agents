@@ -18,7 +18,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from PIL import Image, ImageDraw, ImageFont
 
+from mini_agents.i18n import get_lang, init_from_env, set_lang, t
 from mini_agents.tracing import describe_event
+
+
+def agent_display(name: str) -> str:
+    """英文模式下展示翻译后的角色名（trace 里存储的是中文角色名）。"""
+    if get_lang() == "en":
+        return {"黑板": "Blackboard", "driver": "Driver"}.get(name, name)
+    return name
 
 DARK, FG, STAGE = "#0d1117", "#c9d1d9", "#79c0ff"
 AGENT_COLORS = [("Planner", "#58a6ff"), ("Researcher", "#7ee787"),
@@ -63,7 +71,8 @@ def build_frames(events, window, width, height, font, stage_font):
         agent, type = e["agent"], e["type"]
         if type == "stage":
             stage = e.get("title", "")
-        lines.append((agent, ANSI_RE.sub("", describe_event(agent, type, e))))
+        lines.append((agent, agent_display(agent),
+                      ANSI_RE.sub("", describe_event(agent, type, e))))
         lines = lines[-window:]
         view = (list(lines), stage)
         if frames and frames[-1][0] == view[0] and frames[-1][1] == view[1]:
@@ -76,32 +85,37 @@ def build_frames(events, window, width, height, font, stage_font):
 def rasterize(view_lines, stage, width, height, font, stage_font):
     img = Image.new("RGB", (width, height), DARK)
     draw = ImageDraw.Draw(img)
-    draw.text((16, 10), stage or "mini-agents", font=stage_font, fill=STAGE)
+    draw.text((16, 10), stage or t("g.fallback_title"), font=stage_font, fill=STAGE)
     draw.line([(12, 34), (width - 12, 34)], fill="#30363d", width=1)
     y = 44
-    for agent, text in view_lines:
-        draw.text((16, y), agent, font=font, fill=agent_color(agent))
+    for agent, display, text in view_lines:
+        draw.text((16, y), display, font=font, fill=agent_color(agent))
         draw.text((130, y), text, font=font, fill=FG)
         y += int(font.size * 1.5)
     return img
 
 
 def main():
-    parser = argparse.ArgumentParser(description="trace.jsonl → 协作过程 GIF")
-    parser.add_argument("trace", help="trace.jsonl 路径")
-    parser.add_argument("-o", "--output", default="docs/demo.gif", help="输出 GIF 路径")
-    parser.add_argument("--window", type=int, default=15, help="每帧显示最近 N 行")
-    parser.add_argument("--width", type=int, default=960, help="画布宽度")
-    parser.add_argument("--frame-ms", type=int, default=420, help="每帧时长（毫秒）")
-    parser.add_argument("--max-frames", type=int, default=110, help="最大帧数（超限均匀抽样）")
+    init_from_env()
+    parser = argparse.ArgumentParser(description=t("g.help_trace"))
+    parser.add_argument("trace", help=t("g.help_trace"))
+    parser.add_argument("-o", "--output", default="docs/demo.gif", help=t("g.help_output"))
+    parser.add_argument("--window", type=int, default=15, help=t("g.help_window"))
+    parser.add_argument("--width", type=int, default=960, help=t("g.help_width"))
+    parser.add_argument("--frame-ms", type=int, default=420, help=t("g.help_frame_ms"))
+    parser.add_argument("--max-frames", type=int, default=110, help=t("g.help_max_frames"))
+    parser.add_argument("--lang", default=None, help="zh / en")
     args = parser.parse_args()
+    if args.lang and args.lang not in ("zh", "en"):
+        sys.exit(t("g.bad_lang", lang=args.lang))
+    set_lang(args.lang or os.getenv("MINI_LANG", "zh"))
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     events = load_events(args.trace)
     if not events:
-        sys.exit(f"trace 里没有可渲染的事件：{args.trace}")
+        sys.exit(t("g.no_events", path=args.trace))
 
     font = pick_font(15)
     stage_font = pick_font(19)
@@ -123,8 +137,9 @@ def main():
                    duration=durations, loop=0, optimize=True)
 
     size_kb = out.stat().st_size / 1024
-    print(f"✔ {out} ｜ {len(images)} 帧 ｜ 播放约 {total_ms / 1000:.0f}s ｜ {size_kb:.0f} KB")
-    print(f"  源 trace：{args.trace}（{len(events)} 条事件）")
+    print(t("g.done", path=out, frames=len(images),
+            seconds=total_ms / 1000, kb=size_kb))
+    print(t("g.source", path=args.trace, events=len(events)))
 
 
 if __name__ == "__main__":

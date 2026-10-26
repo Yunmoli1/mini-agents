@@ -14,6 +14,7 @@ import json
 import re
 from collections import deque
 
+from .i18n import t
 from .tools import Tool
 
 SUPPORTED_VERSIONS = ["2024-11-05", "2025-03-26", "2025-06-18"]
@@ -79,8 +80,9 @@ class McpStdioClient:
         self.negotiated_version = result.get("protocolVersion")
         self.server_info = result.get("serverInfo", {})
         await self._notify("notifications/initialized")
-        self._log(f"握手完成：server={self.server_info.get('name')} "
-                  f"version={self.negotiated_version}")
+        self._log(t("m.handshake",
+                    server=self.server_info.get("name"),
+                    version=self.negotiated_version))
         return reader
 
     async def close(self):
@@ -130,14 +132,14 @@ class McpStdioClient:
             raw = (self.server_info or {}).get("name", "mcp")
             prefix = re.sub(r"[^a-zA-Z0-9_-]", "_", raw)
         descriptors = await self.list_tools()
-        self._log(f"发现 {len(descriptors)} 个工具："
-                  f"{', '.join(d['name'] for d in descriptors)}")
+        self._log(t("m.found", n=len(descriptors),
+                    names=", ".join(d["name"] for d in descriptors)))
         return [McpTool(self, d, f"{prefix}_{d['name']}") for d in descriptors]
 
     # ── 协议层 ─────────────────────────────────────────────────
     async def _request(self, method, params=None, timeout=None):
         if not self._proc:
-            raise MCPError("尚未连接到 MCP server")
+            raise MCPError(t("m.not_connected"))
         req_id = next(self._ids)
         future = asyncio.get_running_loop().create_future()
         self._pending[req_id] = future
@@ -147,7 +149,8 @@ class McpStdioClient:
             return await asyncio.wait_for(future, timeout or self.request_timeout)
         except asyncio.TimeoutError:
             self._pending.pop(req_id, None)
-            raise MCPError(f"{method} 在 {timeout or self.request_timeout}s 内未响应") from None
+            raise MCPError(t("m.timeout", method=method,
+                             timeout=timeout or self.request_timeout)) from None
 
     async def _notify(self, method, params=None):
         await self._send({"jsonrpc": "2.0", "method": method,
@@ -166,8 +169,7 @@ class McpStdioClient:
                     for fut in self._pending.values():
                         if not fut.done():
                             fut.set_exception(MCPError(
-                                "MCP server 已退出。stderr 尾部："
-                                + " | ".join(self._stderr_tail)))
+                                t("m.dead", tail=" | ".join(self._stderr_tail))))
                     self._pending.clear()
                     return
                 try:
@@ -180,14 +182,15 @@ class McpStdioClient:
                         if "error" in msg:
                             err = msg["error"]
                             fut.set_exception(MCPError(
-                                f"server 返回错误 {err.get('code')}: {err.get('message')}"))
+                                t("m.server_error", code=err.get("code"),
+                                  message=err.get("message"))))
                         else:
                             fut.set_result(msg["result"])
                 elif msg.get("method") == "ping" and "id" in msg:
                     # 服务器的心跳请求必须回应，否则部分 server 会断开连接
                     await self._send({"jsonrpc": "2.0", "id": msg["id"], "result": {}})
                 else:
-                    self._log(f"（忽略通知 {msg.get('method')}）")
+                    self._log(t("m.ignore", method=msg.get("method")))
         except asyncio.CancelledError:
             pass
 

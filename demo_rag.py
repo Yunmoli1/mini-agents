@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from mini_agents import Agent, LLM, TraceLogger
+from mini_agents.i18n import init_from_env, t
 from mini_agents.rag import KnowledgeBase, make_knowledge_tool
 
 SEEDS = {
@@ -37,6 +38,7 @@ SEEDS = {
 async def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    init_from_env()
     try:
         from dotenv import load_dotenv
         load_dotenv()
@@ -59,9 +61,9 @@ async def main():
         print(e)
         return
 
-    print(f"知识库就绪：{len(SEEDS)} 个文件 → {n_chunks} 块（BM25 索引，纯本地）")
+    print(t("dr.ready", files=len(SEEDS), chunks=n_chunks))
     question = " ".join(sys.argv[1:]).strip() or "这个框架的编排 token 开销比 LangGraph 好多少？"
-    trace.log("driver", "stage", title=f"问题：{question}")
+    trace.log("driver", "stage", title=t("dr.stage", question=question))
 
     agent = Agent(
         name="Librarian",
@@ -74,8 +76,8 @@ async def main():
     answer = await agent.run(question)
 
     trace.print_usage_report()
-    print(f"\n问题：{question}\n\n回答：{answer}")
-    print(f"\n知识库与日志：{run_dir}")
+    print(t("dr.answer", question=question, answer=answer))
+    print(t("dr.where", dir=run_dir))
 
 
 if __name__ == "__main__":

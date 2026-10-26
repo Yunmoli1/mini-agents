@@ -7,6 +7,8 @@ import asyncio
 import os
 from pathlib import Path
 
+from .i18n import t
+
 try:
     from openai import RateLimitError as _RateLimitError
 except ImportError:          # 离线测试不装 openai，保留一个占位类型即可
@@ -33,10 +35,7 @@ class LLM:
         # model 覆盖支持多模型成本路由：同一 client 配置下按角色换模型
         self.model = model or os.getenv("LLM_MODEL", "glm-4-flash")
         if not api_key or "粘贴" in api_key:
-            raise RuntimeError(
-                "未读取到有效的 LLM_API_KEY。请确认项目根目录下存在 .env"
-                "（由 .env.example 复制而来）且其中已填入真实 Key。"
-            )
+            raise RuntimeError(t("l.no_key"))
         from openai import AsyncOpenAI  # 延迟导入：离线测试时无需安装 openai
 
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)

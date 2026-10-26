@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from mini_agents import Agent, LLM, TraceLogger
+from mini_agents.i18n import init_from_env, t
 from mini_agents.mcp_client import McpStdioClient
 
 SERVER = Path(__file__).parent / "examples" / "mcp_fileserver.py"
@@ -24,6 +25,7 @@ SEEDS = {
 async def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    init_from_env()
     try:
         from dotenv import load_dotenv
         load_dotenv()
@@ -48,8 +50,8 @@ async def main():
     async with McpStdioClient([sys.executable, str(SERVER), str(workspace)],
                               trace=trace) as client:
         trace.log("driver", "stage",
-                  title=f"MCP server 就绪：{client.server_info.get('name')} "
-                        f"（沙箱 {workspace}）")
+                  title=t("dm.ready", name=client.server_info.get("name"),
+                          dir=workspace))
         tools = await client.as_tools()
         agent = Agent(
             name="FileAgent",
@@ -62,13 +64,13 @@ async def main():
         answer = await agent.run(
             f"请盘点并汇总当前沙箱（沙箱根目录即你的工作根目录，一律用相对路径）中的文件。")
 
-    trace.log("driver", "stage", title="任务完成")
+    trace.log("driver", "stage", title=t("dm.done"))
     summary = workspace / "summary.md"
     trace.print_usage_report()
-    print(f"\nAgent 汇报：{answer[:500]}")
-    print(f"沙箱产物：{summary}"
-          f"{'（已生成）' if summary.exists() else '（未生成，用 view_trace.py 排查）'}")
-    print(f"协作日志：{trace.path}（python view_trace.py 可回放）")
+    print(t("dm.answer", answer=answer[:500]))
+    print(t("dm.summary", path=summary,
+            state=t("dm.generated") if summary.exists() else t("dm.missing")))
+    print(t("dm.trace_line", path=trace.path))
 
 
 if __name__ == "__main__":

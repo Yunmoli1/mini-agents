@@ -9,8 +9,11 @@
 替代手工维护 README 对比表：每次跑完新框架，执行本脚本即可刷新。
 """
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
+
+from mini_agents.i18n import init_from_env, t
 
 RESULTS_DIR = Path("evals/results")
 FRAMEWORK_SUFFIXES = ["langgraph", "agents-sdk", "crewai"]
@@ -62,12 +65,13 @@ def aggregate(rows, config):
 
 
 def main():
-    if hasattr(__import__("sys").stdout, "reconfigure"):
-        __import__("sys").stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    init_from_env()
 
     runs = load_runs()
     if not runs:
-        print("没有找到任何评测结果（evals/results/*/results.jsonl）")
+        print(t("c.no_results"))
         return
 
     picks = {}
@@ -79,27 +83,28 @@ def main():
     configs = [c for c in CONFIG_ORDER
                if any(aggregate(p["rows"], c) for p in picks.values())]
 
-    lines = ["# 跨框架对比（自动生成）", "",
-             f"- 生成时间：{datetime.now():%Y-%m-%d %H:%M}",
-             "- 口径：每框架取任务数最多的最新全量运行；三列共享同一任务集、"
-             "提示词、工具与判分器", ""]
+    lines = [t("c.title"), "",
+             t("c.generated", time=f"{datetime.now():%Y-%m-%d %H:%M}"),
+             t("c.caliber"), ""]
     for fw, run in picks.items():
         model = run["rows"][0].get("model", "?")
-        lines.append(f"- **{fw}**：{model}（{run['dir']}，{len(run['rows'])} 条结果）")
-    lines += ["", "| 配置 | 指标 | " + " | ".join(picks) + " |",
+        lines.append(t("c.fw_line", fw=fw, model=model,
+                       dir=run["dir"], n=len(run["rows"])))
+    lines += ["", "| " + t("c.cols_config") + " | " + t("c.cols_metric") + " | "
+              + " | ".join(picks) + " |",
               "|---|---|" + "---|" * len(picks)]
 
     for config in configs:
         aggs = {fw: aggregate(run["rows"], config) for fw, run in picks.items()}
         aggs = {fw: a for fw, a in aggs.items() if a}
-        for metric, fmt in (("成功率", lambda a: f"{a['success'] / a['n']:.0%}"),
-                            ("平均 tokens", lambda a: f"{a['tokens']:.0f}"),
-                            ("平均耗时", lambda a: f"{a['seconds']:.1f}s")):
+        for metric_key, fmt in (("c.success", lambda a: f"{a['success'] / a['n']:.0%}"),
+                                ("c.tokens", lambda a: f"{a['tokens']:.0f}"),
+                                ("c.seconds", lambda a: f"{a['seconds']:.1f}s")):
             cells = []
             for fw in picks:
                 a = aggs.get(fw)
                 cells.append(fmt(a) if a else "-")
-            lines.append(f"| {config} | {metric} | " + " | ".join(cells) + " |")
+            lines.append(f"| {config} | {t(metric_key)} | " + " | ".join(cells) + " |")
 
     # 编排开销：同一框架内 orchestrated/single 的 tokens 比
     overhead = {}
@@ -109,19 +114,18 @@ def main():
         if single and orch and single["tokens"]:
             overhead[fw] = (orch["tokens"] / single["tokens"] - 1)
     if overhead:
-        lines.append("| **编排开销** | tokens | "
+        lines.append("| " + t("c.overhead") + " | " + t("c.tokens") + " | "
                      + " | ".join(f"**{overhead.get(fw, float('nan')):+.0%}**"
                                   if fw in overhead else "-"
                                   for fw in picks) + " |")
 
-    lines += ["", "> 自动生成：`python -m evals.compare`。延迟列不可跨框架直接对比，"
-              "限流对齐策略与运行时段不同（详见各 report.md）。"]
+    lines += [t("c.footnote")]
 
     output = "\n".join(lines) + "\n"
     print(output)
     out_path = RESULTS_DIR / "COMPARISON.md"
     out_path.write_text(output, encoding="utf-8")
-    print(f"已写入：{out_path}")
+    print(t("c.written", path=out_path))
 
 
 if __name__ == "__main__":

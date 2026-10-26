@@ -16,6 +16,8 @@ import streamlit as st
 
 from demo_research_team import MAX_REVISIONS, research_pipeline
 from mini_agents import Blackboard, TraceLogger, describe_event
+from mini_agents.i18n import t
+from views._shared import render_lang_switcher
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 _AGENT_STYLES = [
@@ -74,49 +76,51 @@ def render_timeline_html(lines):
             f'<div style="font-family:Consolas,monospace;font-size:0.82rem;line-height:1.55">'
             f'<span style="color:{color}">{html.escape(agent)}</span> '
             f'<span style="color:#c9d1d9">{html.escape(text)}</span></div>')
-    return "".join(parts) or "<i>等待事件…</i>"
+    return "".join(parts) or f"<i>{t('res.waiting')}</i>"
 
 
 def render_usage(usage):
     if not usage:
         return
-    st.subheader("Token 用量（按 Agent）")
-    st.table([{"Agent": name, "请求次数": u["requests"],
-               "输入 tokens": u["prompt_tokens"], "输出 tokens": u["completion_tokens"]}
+    st.subheader(t("res.usage_header"))
+    st.table([{t("res.col_agent"): name, t("res.col_req"): u["requests"],
+               t("res.col_in"): u["prompt_tokens"],
+               t("res.col_out"): u["completion_tokens"]}
               for name, u in usage.items()])
 
 
 def main():
-    st.title("🎯 深度调研小组")
-    st.caption("从零手写的多 Agent 框架：Planner 拆解 → 多名 Researcher 并行调研 → "
-               "Writer 汇总 ⇄ Reviewer 审查打回。下方时间线就是 trace.jsonl 的实时增量。")
+    render_lang_switcher()
+    st.title(t("res.title"))
+    st.caption(t("res.caption"))
 
-    mode = st.radio("运行模式", ["🆕 新任务", "⏯ 断点恢复"], horizontal=True)
+    mode = st.radio(t("res.mode"), [t("res.mode_new"), t("res.mode_resume")],
+                    horizontal=True)
 
     board, topic, trace_path = None, "", None
-    if mode.startswith("🆕"):
-        topic = st.text_input("调研问题",
+    if mode == t("res.mode_new"):
+        topic = st.text_input(t("res.topic"),
                               value="2026 年主流开源多 Agent 框架的选型对比与发展趋势")
-        if not st.button("🚀 开始调研", type="primary", use_container_width=True):
+        if not st.button(t("res.start"), type="primary", use_container_width=True):
             return
         if not topic.strip():
-            st.warning("先输入一个调研问题。")
+            st.warning(t("res.warn_topic"))
             return
         trace_path = Path("runs") / f"app-{datetime.now().strftime('%m%d-%H%M%S')}" / "trace.jsonl"
         topic = topic.strip()
     else:
-        resume_text = st.text_input("run 目录（需含 blackboard.json）", value="runs/")
-        if not st.button("▶️ 从断点继续", type="primary", use_container_width=True):
+        resume_text = st.text_input(t("res.resume_dir"), value="runs/")
+        if not st.button(t("res.resume_btn"), type="primary", use_container_width=True):
             return
         resume_dir = Path(resume_text.strip())
         board_file = resume_dir / "blackboard.json"
         if not board_file.exists():
-            st.error(f"未找到 {board_file}，请确认 run 目录。")
+            st.error(t("res.resume_missing", path=board_file))
             return
         board = Blackboard.load(board_file)
         topic = board.read("task") or "（恢复的任务）"
         trace_path = resume_dir / "trace.jsonl"  # 追加写，回放可看完整历史
-        st.info(f"恢复自 {resume_dir}：已完成的阶段将自动跳过")
+        st.info(t("res.resume_info", dir=resume_dir))
 
     event_queue: queue.Queue = queue.Queue()
     result: dict = {}
@@ -145,17 +149,17 @@ def main():
             time.sleep(0.3)
 
     ok = "error" not in result
-    status.update(label="协作完成 ✔" if ok else "运行出错",
+    status.update(label=t("res.done") if ok else t("res.error_state"),
                   state="complete" if ok else "error")
     if not ok:
         st.error(result["error"])
         return
 
-    st.subheader("最终报告")
+    st.subheader(t("res.report_header"))
     st.markdown(result["report"])
     render_usage(result["usage"])
-    st.download_button("下载 report.md", result["report"], file_name="report.md")
-    st.caption(f"完整协作日志：{result['trace_path']}（python view_trace.py 可回放）")
+    st.download_button(t("res.download"), result["report"], file_name="report.md")
+    st.caption(t("res.trace_caption", path=result["trace_path"]))
 
 
 main()

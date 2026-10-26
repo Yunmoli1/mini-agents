@@ -12,6 +12,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from .i18n import t
+
 _DIM, _RESET, _CYAN = "\033[2m", "\033[0m", "\033[36m"
 
 
@@ -26,23 +28,24 @@ def describe_event(agent, type, p):
         return f"{_CYAN}═══ {p.get('title', '')} ═══{_RESET}"
     if type == "llm_request":
         last = p.get("last_message") or {}
-        detail = last.get("content") or f"（工具结果回合，共 {p.get('message_count')} 条消息）"
-        return f"[{agent}] → LLM: {_short(detail)}"
+        detail = (last.get("content")
+                  or t("ev.tool_turn", count=p.get("message_count")))
+        return f"[{agent}] {t('ev.llm_request', detail=_short(detail))}"
     if type == "llm_response":
         calls = p.get("tool_calls") or []
         if calls:
-            return f"[{agent}] ← 请求调用工具: {', '.join(c['name'] for c in calls)}"
-        return f"[{agent}] ← 回复: {_short(p.get('content') or '')}"
+            return f"[{agent}] {t('ev.request_tools', names=', '.join(c['name'] for c in calls))}"
+        return f"[{agent}] {t('ev.reply', content=_short(p.get('content') or ''))}"
     if type == "tool_call":
-        return f"[{agent}] ⚙ {p.get('name')}({_short(p.get('arguments', ''), 60)})"
+        return f"[{agent}] {t('ev.tool_call', name=p.get('name'), args=_short(p.get('arguments', ''), 60))}"
     if type == "tool_result":
-        return f"[{agent}] ✔ {p.get('name')} → {_short(p.get('preview', ''), 70)}"
+        return f"[{agent}] {t('ev.tool_result', name=p.get('name'), preview=_short(p.get('preview', ''), 70))}"
     if type == "blackboard_write":
-        return f"[黑板] ✍ 写入 {p.get('key')}: {_short(p.get('preview', ''), 70)}"
+        return f"[{t('u.agent_blackboard')}] {t('ev.blackboard_write', key=p.get('key'), preview=_short(p.get('preview', ''), 70))}"
     if type == "mcp_event":
-        return f"[{agent}] MCP: {p.get('detail', '')}"
+        return f"[{agent}] {t('ev.mcp_event', detail=p.get('detail', ''))}"
     if type == "llm_retry":
-        return f"[{agent}] ⏳ 429 限流，{p.get('delay')}s 后做第 {p.get('attempt')} 次重试"
+        return f"[{agent}] {t('ev.llm_retry', delay=p.get('delay'), attempt=p.get('attempt'))}"
     return f"[{agent}] {type}"
 
 
@@ -70,11 +73,12 @@ class TraceLogger:
 
     def print_usage_report(self):
         total_in = total_out = total_req = 0
-        print("\n─── Token 用量（按 Agent）──────────")
+        print(t("u.header"))
         for name, u in self.usage.items():
-            print(f"  {name:<14} {u['requests']:>3} 次请求   "
-                  f"{u['prompt_tokens']:>7} 入 + {u['completion_tokens']:>6} 出 tokens")
+            print(t("u.line", name=name, requests=u["requests"],
+                    pt=u["prompt_tokens"], ct=u["completion_tokens"]))
             total_req += u["requests"]
             total_in += u["prompt_tokens"]
             total_out += u["completion_tokens"]
-        print(f"  {'合计':<13}  {total_req:>3} 次请求   {total_in:>7} 入 + {total_out:>6} 出 tokens")
+        print(t("u.total", name=t("u.total_name"), requests=total_req,
+                pt=total_in, ct=total_out))

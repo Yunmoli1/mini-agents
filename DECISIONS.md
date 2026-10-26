@@ -140,6 +140,18 @@
 - **代价**：纯 BM25 对同义改写召回弱；chunk 策略是朴素的空行分段 + 硬切 400 字，
   没做语义切分。工程细节：空分词块必须过滤，否则 BM25 的 IDF 会除零
 
+### 20. i18n 的范围与两个平台坑（2026-10-26）
+- **决定**：界面 / CLI / 日志 / 报告文案双语可切换（`MINI_LANG` 环境变量 +
+  Streamlit 侧边栏选择器 + GIF `--lang`）；**发给模型的提示词、任务集、回放中
+  的历史 stage 标题保持录制时语言**——前者是产品 UI，后者是数据与评测口径
+- **平台坑一（Streamlit 1.66）**：`st.navigation` 应用中，主脚本里创建的
+  `st.sidebar` 组件会被**静默丢弃**（连自动页面导航都一起消失）——语言选择器
+  必须放在页面内部，由各页面调用 `views/_shared.render_lang_switcher()`
+- **平台坑二（batch）**：含中文的 .bat 会被 cmd 按 ANSI/GBK 解析成乱码命令——
+  `启动.bat` 只做纯 ASCII 引导壳，全部中文逻辑下沉到 `scripts/launcher.py`
+- **代价**：英文界面下运行的流水线，产出报告仍是中文（提示词冻结所致）；
+  回放历史 trace 时 stage 标题保持录制时语言
+
 ### 15. CrewAI 对比选择"同构 delegate"而非其惯用的 hierarchical process（2026-10-26）
 - **问题**：CrewAI 惯用的多 Agent 编排是 hierarchical process（manager 派活），
   与 mini-agents / LangGraph 适配器采用的"delegate 即工具、动态现场建 worker"

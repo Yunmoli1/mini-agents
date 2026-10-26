@@ -18,6 +18,7 @@ from pathlib import Path
 
 from mini_agents import Agent, Blackboard, LLM, TraceLogger
 from demo_research_team import build_research_tool
+from mini_agents.i18n import init_from_env, t
 from mini_agents.tools import tool, web_search
 
 MAX_REVISIONS = 2
@@ -77,6 +78,7 @@ async def routed_pipeline(topic, trace, strong_llm, cheap_llm):
 async def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    init_from_env()
     try:
         from dotenv import load_dotenv
         load_dotenv()
@@ -99,7 +101,7 @@ async def main():
         print(e)
         return
 
-    print(f"路由策略：主链路 = {strong_name} ｜ 调研员 = {cheap_name}")
+    print(t("dc.route", strong=strong_name, cheap=cheap_name))
     report = await routed_pipeline(topic, trace, strong_llm, cheap_llm)
 
     # ── 成本核算：同一份 token 分布 × 两种价格策略 ────────────────────
@@ -115,18 +117,24 @@ async def main():
                      u["completion_tokens"], tier, actual, all_strong))
 
     trace.print_usage_report()
-    print("\n─── 成本场景对比（价格表为示例假设，按实际账单修改 PRICE）───")
-    print(f"  {'角色':<14} {'tier':<7} {'实际成本':>10} {'若全强模型':>10}")
+    print(t("dc.header"))
+    print(f"  {t('dc.col_role'):<14} {t('dc.col_tier'):<7} "
+          f"{t('dc.col_actual'):>10} {t('dc.col_allstrong'):>10}")
     for name, req, pt, ct, tier, actual, all_strong in rows:
         print(f"  {name:<14} {tier:<7} {actual:>10.4f} {all_strong:>10.4f}")
-    print(f"  {'合计':<24} {cost_routed:>10.4f} {cost_strong_all:>10.4f}")
+    print(f"  {t('dc.total'):<24} {cost_routed:>10.4f} {cost_strong_all:>10.4f}")
     if cost_strong_all > 0:
-        print(f"  路由节省：{(1 - cost_routed / cost_strong_all):.0%}"
-              + ("（当前 STRONG==CHEAP，未发生真实路由）" if strong_name == cheap_name else ""))
+        note = t("dc.note_same") if strong_name == cheap_name else ""
+        print(t("dc.saved", pct=f"{1 - cost_routed / cost_strong_all:.0%}") + note)
+
+    print(f"  {t('dc.total'):<24} {cost_routed:>10.4f} {cost_strong_all:>10.4f}")
+    if cost_strong_all > 0:
+        note = t("dc.note_same") if strong_name == cheap_name else ""
+        print(t("dc.saved", pct=f"{1 - cost_routed / cost_strong_all:.0%}") + note)
 
     (run_dir / "report.md").write_text(report, encoding="utf-8")
-    print(f"\n报告：{run_dir / 'report.md'} ｜ trace：{run_dir / 'trace.jsonl'}")
-    print("提示：把 LLM_MODEL_CHEAP 设成更便宜的模型即可看到真实节省比例。")
+    print(t("dc.report", path=run_dir / "report.md", trace=run_dir / "trace.jsonl"))
+    print(t("dc.hint"))
 
 
 if __name__ == "__main__":

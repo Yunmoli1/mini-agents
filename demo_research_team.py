@@ -25,6 +25,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from mini_agents import Agent, Blackboard, LLM, TraceLogger
+from mini_agents.i18n import init_from_env, t
 from mini_agents.tools import tool, web_search
 
 MAX_REVISIONS = 2  # 审查打回重写的上限，防止"写↔审"循环停不下来
@@ -100,7 +101,7 @@ async def research_pipeline(topic, trace, max_revisions=MAX_REVISIONS,
 
     # ── 阶段 1：Planner 拆解 + 并行派活（已有产出则跳过）────────────
     if board.read("planner_summary") is None:
-        trace.log("driver", "stage", title=f"总任务：{topic}")
+        trace.log("driver", "stage", title=t("dt.stage_task", topic=topic))
         planner = Agent(
             name="Planner",
             system_prompt=("你是调研项目负责人。把总任务拆成 2~4 个互相独立、合起来能覆盖全面的子问题，"
@@ -112,7 +113,7 @@ async def research_pipeline(topic, trace, max_revisions=MAX_REVISIONS,
         board.write("planner_summary", await planner.run(f"总任务：{topic}"))
         checkpoint()
     else:
-        trace.log("driver", "stage", title="恢复：Planner 阶段已完成，跳过")
+        trace.log("driver", "stage", title=t("dt.stage_skip_planner"))
 
     # ── 阶段 2：Writer 读黑板，汇总成稿（已有初稿则跳过）────────────
     writer = Agent(
@@ -124,13 +125,13 @@ async def research_pipeline(topic, trace, max_revisions=MAX_REVISIONS,
         llm=llm,
     )
     if board.read("draft_v1") is None:
-        trace.log("driver", "stage", title="Writer 撰写报告初稿")
+        trace.log("driver", "stage", title=t("dt.stage_writer"))
         board.write("draft_v1",
                     await writer.run("请根据黑板上的任务和调研发现，撰写报告。",
                                      context=board.as_markdown()))
         checkpoint()
     else:
-        trace.log("driver", "stage", title="恢复：初稿已存在，跳过撰写")
+        trace.log("driver", "stage", title=t("dt.stage_skip_writer"))
     report = board.read("draft_v1")
 
     # ── 阶段 3：Reviewer 审查 ⇄ Writer 修订（按黑板进度续跑的批评循环）──
@@ -147,7 +148,7 @@ async def research_pipeline(topic, trace, max_revisions=MAX_REVISIONS,
     while round_no <= max_revisions:
         review = board.read(f"review_round_{round_no}")
         if review is None:
-            trace.log("driver", "stage", title=f"Reviewer 审查（第 {round_no} 轮）")
+            trace.log("driver", "stage", title=t("dt.stage_review", round=round_no))
             raw = await reviewer.run("请审查当前报告：",
                                      context=f"总任务：{topic}\n\n报告全文：\n{report}\n\n{board.as_markdown()}")
             verdict, issues = parse_review(raw)
@@ -155,9 +156,9 @@ async def research_pipeline(topic, trace, max_revisions=MAX_REVISIONS,
             board.write(f"review_round_{round_no}", review)
             checkpoint()
         if review["verdict"] == "pass":
-            trace.log("driver", "stage", title="审查通过 ✔")
+            trace.log("driver", "stage", title=t("dt.stage_pass"))
             return SimpleNamespace(report=report, board=board)
-        trace.log("driver", "stage", title=f"打回重写（{len(review['issues'])} 个问题）")
+        trace.log("driver", "stage", title=t("dt.stage_revise", n=len(review["issues"])))
         next_key = f"draft_v{round_no + 1}"
         revised = board.read(next_key)
         if revised is None:
@@ -168,20 +169,21 @@ async def research_pipeline(topic, trace, max_revisions=MAX_REVISIONS,
             checkpoint()
         else:
             report = revised
-            trace.log("driver", "stage", title=f"恢复：{next_key} 已存在，跳过修订")
+            trace.log("driver", "stage", title=t("dt.stage_skip_revision", key=next_key))
         round_no += 1
-    trace.log("driver", "stage", title=f"已达修订上限（{max_revisions} 轮），采用当前版本")
+    trace.log("driver", "stage", title=t("dt.stage_max", n=max_revisions))
     return SimpleNamespace(report=report, board=board)
 
 
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    init_from_env()
 
-    parser = argparse.ArgumentParser(description="深度调研小组 demo（mini-agents）")
-    parser.add_argument("topic", nargs="*", default=[], help="调研问题（留空用默认主题）")
+    parser = argparse.ArgumentParser(description=t("dt.description"))
+    parser.add_argument("topic", nargs="*", default=[], help=t("dt.help_topic"))
     parser.add_argument("--resume", metavar="RUN_DIR",
-                        help="从指定 run 目录恢复继续（该目录需有 blackboard.json）")
+                        help=t("dt.help_resume"))
     args = parser.parse_args()
 
     try:
@@ -196,7 +198,7 @@ def main():
         topic = board.read("task")
         # trace 追加写：恢复后的记录接在原日志后面，回放可看完整历史
         trace = TraceLogger(run_dir / "trace.jsonl")
-        print(f"从 {run_dir} 恢复：已完成的阶段将自动跳过")
+        print(t("dt.resumed", dir=run_dir))
     else:
         topic = " ".join(args.topic).strip() or "2026 年主流开源多 Agent 框架的选型对比与发展趋势"
         run_dir = Path("runs") / datetime.now().strftime("%m%d-%H%M%S")
@@ -214,9 +216,9 @@ def main():
     (run_dir / "report.md").write_text(result.report, encoding="utf-8")
     result.board.save(run_dir / "blackboard.json")
     trace.print_usage_report()
-    print(f"\n报告：{run_dir / 'report.md'}")
-    print(f"黑板：{run_dir / 'blackboard.json'}")
-    print(f"协作日志：{run_dir / 'trace.jsonl'}（python view_trace.py 可回放）")
+    print(t("dt.done_report", path=run_dir / "report.md"))
+    print(t("dt.done_blackboard", path=run_dir / "blackboard.json"))
+    print(t("dt.done_trace", path=run_dir / "trace.jsonl"))
 
 
 if __name__ == "__main__":

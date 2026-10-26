@@ -6,6 +6,8 @@
 import asyncio
 import json
 
+from .i18n import t
+
 MAX_TOOL_RESULT_CHARS = 8000  # 单个工具结果塞进上下文的上限，防止一次搜索撑爆对话
 
 
@@ -55,7 +57,7 @@ class Agent:
             for tc, output in zip(msg.tool_calls, results):
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": output})
 
-        return "（达到最大轮数上限，强制停止。）"
+        return t("a.max_turns")
 
     async def _execute(self, tool_call) -> str:
         """执行单个工具调用，任何异常都转成文字返回给模型（让它自己看到并纠错）。"""

@@ -19,6 +19,7 @@ from types import SimpleNamespace
 
 from mini_agents import Agent, LLM, TraceLogger
 from mini_agents.delegation import build_delegate_tool
+from mini_agents.i18n import init_from_env, t
 from mini_agents.mcp_client import McpStdioClient
 from mini_agents.tools import calculator
 
@@ -252,31 +253,30 @@ def write_chart(out_dir: Path, results, configs, framework="mini-agents"):
 def write_report(out_dir: Path, results, configs, model_name, repeats, offline, tasks,
                  framework="mini-agents"):
     counts = {}
-    for t in tasks:
-        counts[t.category] = counts.get(t.category, 0) + 1
+    for task in tasks:
+        counts[task.category] = counts.get(task.category, 0) + 1
     breakdown = " / ".join(f"{k} {n}" for k, n in sorted(counts.items()))
-    lines = ["# 评测报告：编排策略对比", "",
-             f"- 时间：{datetime.now():%Y-%m-%d %H:%M}",
-             f"- 框架：{framework}",
-             f"- 模型：{model_name}"
-             + ("（**离线自检**：仅验证评测管线与判分逻辑，数字不代表模型能力）"
-                if offline else ""),
-             f"- 任务数：{len(tasks)}（{breakdown}）｜ 重复 {repeats} 次",
-             f"- 配置：{'、'.join(configs)}（四组共享同一提示词与工具集，仅执行器不同）", "",
-             "## 配置级汇总", "",
-             "| 配置 | 成功/总 | 成功率 | 平均耗时 | 平均 tokens | 平均请求数 | 多工具调用回合 |",
+    lines = [t("r.report_title"), "",
+             t("r.time", time=f"{datetime.now():%Y-%m-%d %H:%M}"),
+             t("r.framework", framework=framework),
+             t("r.model", model=model_name)
+             + (t("r.offline_note") if offline else ""),
+             t("r.task_count", n=len(tasks), breakdown=breakdown, repeats=repeats),
+             t("r.configs", configs="、".join(configs)), "",
+             t("r.cfg_summary"), "", t("r.cfg_cols"),
              "|---|---|---|---|---|---|---|"]
     for c in configs:
         a = _aggregate(results, c)
         if not a:
             continue
-        lines.append(f"| {c} | {a['success']}/{a['n']} | {a['success'] / a['n']:.0%} "
-                     f"| {a['avg_seconds']:.1f}s | {a['avg_tokens']:.0f} "
-                     f"| {a['avg_requests']:.1f} | {a['multi_call_turns']} |")
+        lines.append(t("r.cfg_row", config=c, success=a["success"], total=a["n"],
+                       rate=a["success"] / a["n"], seconds=a["avg_seconds"],
+                       tokens=a["avg_tokens"], requests=a["avg_requests"],
+                       multi=a["multi_call_turns"]))
 
-    lines += ["", "## 逐任务结果", "",
-              "| 任务 | 类别 | " + " | ".join(configs) + " |",
-              "|---|---|" + "---|" * len(configs)]
+    lines += ["", t("r.matrix_title"), ""]
+    lines.append(t("r.matrix_cols", configs=" | ".join(configs)))
+    lines.append("|" + "---|" * (len(configs) + 2))
     for task in tasks:
         cells = []
         for c in configs:
@@ -290,25 +290,25 @@ def write_report(out_dir: Path, results, configs, model_name, repeats, offline, 
         lines.append(f"| {task.id} | {task.category} | " + " | ".join(cells) + " |")
 
     sp = _speedup(results)
-    lines += ["", "## 并行加速比", ""]
+    lines += ["", t("r.speedup_title"), ""]
     if sp:
         gain = sp["serial"] / sp["parallel"] if sp["parallel"] else float("inf")
-        lines += [f"在出现过同回合多工具调用的 {len(sp['tasks'])} 个任务上：",
-                  f"- 串行平均 {sp['serial']:.1f}s ｜ 并行平均 {sp['parallel']:.1f}s"
-                  f" ｜ **加速比 {gain:.2f}x**"]
+        lines += [t("r.speedup_on", n=len(sp["tasks"])),
+                  t("r.speedup_pair", serial=sp["serial"], parallel=sp["parallel"],
+                    gain=gain)]
     elif "single-parallel" not in configs:
-        lines.append("本轮未包含 single-parallel 配置，未测并行加速比。")
+        lines.append(t("r.speedup_no_config"))
     else:
-        lines.append("本轮没有出现同回合多工具调用，无法测加速比"
-                     "（可换支持并行工具调用的模型重试）。")
+        lines.append(t("r.speedup_no_events"))
 
     failures = [r for r in results if not r.success]
-    lines += ["", "## 失败明细", ""]
+    lines += ["", t("r.failures_title"), ""]
     if failures:
         for r in failures:
-            lines.append(f"- [{r.config}] {r.task_id}（r{r.repeat}）：{r.detail}")
+            lines.append(t("r.fail_line", config=r.config, task=r.task_id,
+                           repeat=r.repeat, detail=r.detail))
     else:
-        lines.append("无。")
+        lines.append(t("r.no_failures"))
 
     (out_dir / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -316,11 +316,12 @@ def write_report(out_dir: Path, results, configs, model_name, repeats, offline, 
 async def amain(argv=None):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    init_from_env()
     args = parse_args(argv)
     configs = (args.configs.split(",") if args.configs else list(CONFIGS))
     for c in configs:
         if c not in CONFIGS:
-            sys.exit(f"未知配置：{c}。可选：{', '.join(CONFIGS)}")
+            sys.exit(t("r.unknown_config", config=c, choices=", ".join(CONFIGS)))
 
     stamp = datetime.now().strftime("%m%d-%H%M%S")
     suffix = ("-offline" if args.offline else ""
@@ -344,9 +345,9 @@ async def amain(argv=None):
         model_name = os.getenv("LLM_MODEL", "未知")
 
     tasks = TASKS if not args.limit else TASKS[: args.limit]
-    print(f"评测开始：framework={args.framework} configs={configs} "
-          f"repeats={args.repeats} tasks={len(tasks)} "
-          f"model={model_name} → {out_dir}")
+    print(t("r.eval_start", framework=args.framework,
+            configs=",".join(configs), repeats=args.repeats,
+            tasks=len(tasks), model=model_name, dir=out_dir))
     results = []
     for config in configs:
         for task in tasks:
@@ -355,9 +356,11 @@ async def amain(argv=None):
                                      model_name, args.framework)
                 results.append(res)
                 mark = "✓" if res.success else "✗"
-                print(f"  [{config}] {task.id} {mark} {res.seconds:5.1f}s "
-                      f"{res.tokens:>6} tok{'' if res.success else '  ← ' + res.detail}",
-                      flush=True)
+                line = t("r.task_line", config=config, task=task.id, mark=mark,
+                         seconds=res.seconds, tokens=res.tokens)
+                if not res.success:
+                    line += t("r.task_fail_suffix", detail=res.detail)
+                print(line, flush=True)
 
     (out_dir / "results.jsonl").write_text(
         "\n".join(json.dumps(asdict(r), ensure_ascii=False) for r in results) + "\n",
@@ -366,27 +369,27 @@ async def amain(argv=None):
                  tasks, args.framework)
     write_chart(out_dir, results, configs, args.framework)
 
-    print("\n─── 汇总 ───")
+    print(t("r.summary"))
     for c in configs:
         a = _aggregate(results, c)
         if a:
-            print(f"  {c:<22} {a['success']}/{a['n']}  "
-                  f"{a['avg_seconds']:.1f}s  {a['avg_tokens']:.0f} tok")
-    print(f"\n报告：{out_dir / 'report.md'}")
-    print(f"数据：{out_dir / 'results.jsonl'}")
+            print(t("r.summary_line", config=c, success=a["success"], n=a["n"],
+                    seconds=a["avg_seconds"], tokens=a["avg_tokens"]))
+    print(t("r.out_report", path=out_dir / "report.md"))
+    print(t("r.out_data", path=out_dir / "results.jsonl"))
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description="mini-agents 评测 harness")
+    parser = argparse.ArgumentParser(description=t("r.help_description"))
     parser.add_argument("--offline", action="store_true",
-                        help="离线自检：不调用真实模型，验证管线与判分逻辑")
+                        help=t("r.help_offline"))
     parser.add_argument("--configs", default=None,
-                        help=f"逗号分隔，可选：{', '.join(CONFIGS)}（默认全部）")
+                        help=t("r.help_configs", choices=", ".join(CONFIGS)))
     parser.add_argument("--repeats", type=int, default=1,
-                        help="每个任务重复次数（默认 1）")
+                        help=t("r.help_repeats"))
     parser.add_argument("--limit", type=int, default=None,
-                        help="只跑前 N 个任务（试水/冒烟用）")
+                        help=t("r.help_limit"))
     parser.add_argument("--framework", default="mini-agents",
                         choices=["mini-agents", "langgraph", "agents-sdk"],
-                        help="被评测的框架（默认 mini-agents；langgraph/agents-sdk 走 .venv）")
+                        help=t("r.help_framework"))
     return parser.parse_args(argv)
