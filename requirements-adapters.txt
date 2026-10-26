@@ -1,0 +1,5 @@
+# 跨框架对比（evals --framework langgraph / agents-sdk）的适配器依赖。
+# 核心框架与离线测试不需要它们；安装：pip install -r requirements-adapters.txt
+langgraph>=0.2
+langchain-openai>=0.2
+openai-agents>=0.2

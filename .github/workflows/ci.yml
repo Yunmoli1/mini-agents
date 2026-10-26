@@ -32,6 +32,7 @@ jobs:
           python test_rag.py
           python test_cost_routing.py
 
-      - name: 模块导入检查
+      - name: 跨框架适配器导入检查（可选依赖）
         run: |
-          python -c "import mini_agents, evals.runner, evals.langgraph_adapter; print('imports OK')"
+          pip install -r requirements-adapters.txt
+          python -c "import mini_agents, evals.runner, evals.langgraph_adapter, evals.agents_sdk_adapter; print('adapter imports OK')"
