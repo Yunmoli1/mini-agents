@@ -52,6 +52,7 @@ def build_research_tool(board, llm):
                            "每条要点尽量附来源链接。只做调研，不写长文。"),
             tools=[web_search],
             llm=llm,
+            fail_fast_turns=3,  # 搜索服务持续限流时止损，别烧满 15 轮（DECISIONS #21）
         )
         finding = await researcher.run(f"请调研这个子问题：{sub_question}")
         board.write(f"finding_{i}", {"sub_question": sub_question, "finding": finding})

@@ -63,14 +63,16 @@ def web_search(query: str, max_results: int = 5):
     try:
         from ddgs import DDGS
     except ImportError:
-        return [{"note": "未安装 ddgs（pip install ddgs），无法联网搜索"}]
+        return [{"error": "未安装 ddgs（pip install ddgs），无法联网搜索"}]
     try:
         hits = DDGS().text(query, max_results=max_results)
         return [{"title": r.get("title"), "url": r.get("href"), "snippet": r.get("body")}
                 for r in hits]
     except Exception as exc:
-        # 网络受限时优雅降级：让 Agent 流程能继续跑完，而不是中途崩溃
-        return [{"note": f"搜索不可用（{exc}），请基于已有知识回答，并注明“未经联网核实”。"}]
+        # 网络受限时优雅降级：不抛异常中断流程，但用 "error" 键标记失败——
+        # Agent 层的 fail_fast 早停靠它识别"连续搜索失败"，否则调研员会烧满轮数上限
+        return [{"error": f"搜索不可用（{exc}）",
+                 "note": "可换关键词重试；若始终不可用，请基于已有知识回答并注明“未经联网核实”。"}]
 
 
 # calculator 用 ast 白名单求值而不是 eval()：工具参数来自模型输出，

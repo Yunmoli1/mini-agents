@@ -17,7 +17,8 @@ from mini_agents.i18n import init_from_env, set_lang, t
 
 ROOT = Path(__file__).resolve().parent.parent
 TESTS = ["test_offline.py", "test_mcp.py", "test_checkpoint.py",
-         "test_rag.py", "test_cost_routing.py"]
+         "test_rag.py", "test_cost_routing.py", "test_early_stop.py",
+         "test_judge.py"]
 
 BANNER_LINE = "══════════════════════════════════════════"
 

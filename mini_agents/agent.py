@@ -10,15 +10,37 @@ from .i18n import t
 
 MAX_TOOL_RESULT_CHARS = 8000  # 单个工具结果塞进上下文的上限，防止一次搜索撑爆对话
 
+# 工具失败约定：异常被 _execute 捕获后以这两个前缀开头；工具自身降级时返回含
+# "error" 键的数据（见 web_search）。早停机制靠它识别"这轮一无所获"。
+_FAILURE_PREFIXES = ("工具执行出错：", "错误：")
+
+
+def looks_like_failure(text: str) -> bool:
+    if isinstance(text, str) and text.startswith(_FAILURE_PREFIXES):
+        return True
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return False
+    if isinstance(data, dict):
+        return "error" in data
+    if isinstance(data, list) and data:
+        return all(isinstance(x, dict) and "error" in x for x in data)
+    return False
+
 
 class Agent:
     def __init__(self, name, system_prompt, tools=(), llm=None, max_turns=15,
-                 parallel_tool_calls=True):
+                 parallel_tool_calls=True, fail_fast_turns=0):
         self.name = name
         self.system_prompt = system_prompt
         self.llm = llm
         self.max_turns = max_turns
         self.parallel_tool_calls = parallel_tool_calls
+        # 连续 N 轮所有工具调用全部失败就提前止损（0 = 关闭）。
+        # 默认关闭：早停是为"唯一工具持续不可用"的调研员场景设计的，
+        # 一般 agent 偶尔失败后重试是正常行为，不该被掐断。
+        self.fail_fast_turns = fail_fast_turns
         self.tools = {t.name: t for t in tools}
         self.trace = getattr(llm, "trace", None)
 
@@ -35,6 +57,7 @@ class Agent:
         messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": user_content}]
 
+        failed_turns = 0
         for _turn in range(1, self.max_turns + 1):
             msg = await self.llm.chat(messages, tools=self._schemas(), agent=self.name)
 
@@ -56,6 +79,19 @@ class Agent:
                 results = [await self._execute(tc) for tc in msg.tool_calls]
             for tc, output in zip(msg.tool_calls, results):
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": output})
+
+            # 提前止损：一轮里所有工具都失败 = 这一轮毫无收获；连续多轮如此，
+            # 再跑下去只会烧满轮数上限（搜索服务持续限流时的真实教训）。
+            # 只要有一轮工具成功就把计数清零——偶发失败后换关键词重试是正常行为。
+            if self.fail_fast_turns:
+                failed_turns = failed_turns + 1 if all(
+                    looks_like_failure(r) for r in results) else 0
+                if failed_turns >= self.fail_fast_turns:
+                    if self.trace:
+                        self.trace.log(self.name, "early_stop",
+                                       failed_turns=failed_turns,
+                                       max_turns=self.max_turns)
+                    return t("a.early_stop", n=failed_turns)
 
         return t("a.max_turns")
 

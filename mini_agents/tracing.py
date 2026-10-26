@@ -46,6 +46,8 @@ def describe_event(agent, type, p):
         return f"[{agent}] {t('ev.mcp_event', detail=p.get('detail', ''))}"
     if type == "llm_retry":
         return f"[{agent}] {t('ev.llm_retry', delay=p.get('delay'), attempt=p.get('attempt'))}"
+    if type == "early_stop":
+        return f"[{agent}] {t('ev.early_stop', n=p.get('failed_turns'))}"
     return f"[{agent}] {type}"
 
 

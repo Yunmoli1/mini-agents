@@ -78,6 +78,9 @@ class TaskResult:
     tool_calls: int
     multi_call_turns: int
     model: str
+    quality: int = None          # LLM 评委 0~10 分；None = 未评（--judge 未开或评委失败）
+    judge_tokens: int = 0        # 评委自身消耗，单独计量、不计入上面的 tokens
+    judge_reason: str = ""
 
 
 def _trace_stats(path: Path):
@@ -115,7 +118,7 @@ def parse_review(raw):
 
 
 async def run_task(config, task, repeat, llm_maker, out_dir, model_name,
-                   framework="mini-agents"):
+                   framework="mini-agents", judge=None):
     cfg = CONFIGS[config]
     sandbox = Path(tempfile.mkdtemp(prefix=f"eval_{task.id}_"))
     if task.prepare:
@@ -190,8 +193,16 @@ async def run_task(config, task, repeat, llm_maker, out_dir, model_name,
     tokens, requests = _usage_total(trace)
     tc, mc = _trace_stats(trace.path)
     ok, detail = task.verify(SimpleNamespace(answer=answer, sandbox=sandbox))
+
+    quality, judge_reason, judge_tokens = None, "", 0
+    if judge is not None:
+        try:
+            quality, judge_reason, judge_tokens = await judge(config, task, repeat, answer)
+        except Exception as exc:
+            quality, judge_reason = None, f"评委调用失败：{exc}"
     return TaskResult(config, task.id, task.category, repeat, ok, detail,
-                      seconds, tokens, requests, tc, mc, model_name)
+                      seconds, tokens, requests, tc, mc, model_name,
+                      quality, judge_tokens, judge_reason)
 
 
 def _aggregate(results, config):
@@ -199,6 +210,7 @@ def _aggregate(results, config):
     n = len(rs)
     if not n:
         return None
+    scores = [r.quality for r in rs if r.quality is not None]
     return {
         "n": n,
         "success": sum(r.success for r in rs),
@@ -206,6 +218,8 @@ def _aggregate(results, config):
         "avg_tokens": sum(r.tokens for r in rs) / n,
         "avg_requests": sum(r.requests for r in rs) / n,
         "multi_call_turns": sum(r.multi_call_turns for r in rs),
+        "quality": (sum(scores) / len(scores)) if scores else None,
+        "judge_tokens": sum(r.judge_tokens for r in rs),
     }
 
 
@@ -240,7 +254,10 @@ def write_chart(out_dir: Path, results, configs, framework="mini-agents"):
     metrics = [("任务成功率", [a["success"] / a["n"] for _, a in agg], ""),
                ("平均 tokens", [a["avg_tokens"] for _, a in agg], ""),
                ("平均耗时 (s)", [a["avg_seconds"] for _, a in agg], "")]
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4))
+    if any(a["quality"] is not None for _, a in agg):
+        metrics.append(("平均质量 (LLM 评委)",
+                        [a["quality"] if a["quality"] is not None else 0 for _, a in agg], ""))
+    fig, axes = plt.subplots(1, len(metrics), figsize=(3.4 * len(metrics), 4))
     for ax, (title, values, _) in zip(axes, metrics):
         ax.bar(names, values, color="#4c72b0")
         ax.set_title(title)
@@ -251,7 +268,7 @@ def write_chart(out_dir: Path, results, configs, framework="mini-agents"):
 
 
 def write_report(out_dir: Path, results, configs, model_name, repeats, offline, tasks,
-                 framework="mini-agents"):
+                 framework="mini-agents", judged=False):
     counts = {}
     for task in tasks:
         counts[task.category] = counts.get(task.category, 0) + 1
@@ -264,7 +281,7 @@ def write_report(out_dir: Path, results, configs, model_name, repeats, offline, 
              t("r.task_count", n=len(tasks), breakdown=breakdown, repeats=repeats),
              t("r.configs", configs="、".join(configs)), "",
              t("r.cfg_summary"), "", t("r.cfg_cols"),
-             "|---|---|---|---|---|---|---|"]
+             "|---|---|---|---|---|---|---|---|"]
     for c in configs:
         a = _aggregate(results, c)
         if not a:
@@ -272,7 +289,8 @@ def write_report(out_dir: Path, results, configs, model_name, repeats, offline, 
         lines.append(t("r.cfg_row", config=c, success=a["success"], total=a["n"],
                        rate=a["success"] / a["n"], seconds=a["avg_seconds"],
                        tokens=a["avg_tokens"], requests=a["avg_requests"],
-                       multi=a["multi_call_turns"]))
+                       multi=a["multi_call_turns"],
+                       quality="-" if a["quality"] is None else f"{a['quality']:.1f}"))
 
     lines += ["", t("r.matrix_title"), ""]
     lines.append(t("r.matrix_cols", configs=" | ".join(configs)))
@@ -300,6 +318,31 @@ def write_report(out_dir: Path, results, configs, model_name, repeats, offline, 
         lines.append(t("r.speedup_no_config"))
     else:
         lines.append(t("r.speedup_no_events"))
+
+    if judged:
+        judge_tokens = sum(a["judge_tokens"] for _, a in
+                           ((c, _aggregate(results, c)) for c in configs) if a)
+        unparsed = sum(1 for r in results if r.quality is None)
+        lines += ["", t("r.judge_title"), "",
+                  t("r.judge_run_note", model=model_name),
+                  t("r.judge_note", tokens=judge_tokens)]
+        if unparsed:
+            lines.append(t("r.judge_unparsed", n=unparsed))
+        lines += ["", t("r.matrix_cols", configs=" | ".join(configs)),
+                  "|" + "---|" * (len(configs) + 2)]
+        for task in tasks:
+            cells = []
+            for c in configs:
+                scores = [r.quality for r in results
+                          if r.config == c and r.task_id == task.id
+                          and r.quality is not None]
+                if not scores:
+                    cells.append("-")
+                elif len(scores) == 1:
+                    cells.append(str(scores[0]))
+                else:
+                    cells.append(f"{sum(scores) / len(scores):.1f}")
+            lines.append(f"| {task.id} | {task.category} | " + " | ".join(cells) + " |")
 
     failures = [r for r in results if not r.success]
     lines += ["", t("r.failures_title"), ""]
@@ -345,6 +388,13 @@ async def amain(argv=None):
         model_name = os.getenv("LLM_MODEL", "未知")
 
     tasks = TASKS if not args.limit else TASKS[: args.limit]
+    judge_fn = None
+    if args.judge:
+        if args.offline:
+            print(t("r.judge_skip_offline"))
+        else:
+            async def judge_fn(config, task, repeat, answer):
+                return await _run_judge(out_dir, config, task, repeat, answer)
     print(t("r.eval_start", framework=args.framework,
             configs=",".join(configs), repeats=args.repeats,
             tasks=len(tasks), model=model_name, dir=out_dir))
@@ -353,11 +403,13 @@ async def amain(argv=None):
         for task in tasks:
             for repeat in range(1, args.repeats + 1):
                 res = await run_task(config, task, repeat, llm_maker, out_dir,
-                                     model_name, args.framework)
+                                     model_name, args.framework, judge=judge_fn)
                 results.append(res)
                 mark = "✓" if res.success else "✗"
                 line = t("r.task_line", config=config, task=task.id, mark=mark,
                          seconds=res.seconds, tokens=res.tokens)
+                if res.quality is not None:
+                    line += t("r.task_quality_suffix", quality=res.quality)
                 if not res.success:
                     line += t("r.task_fail_suffix", detail=res.detail)
                 print(line, flush=True)
@@ -366,7 +418,7 @@ async def amain(argv=None):
         "\n".join(json.dumps(asdict(r), ensure_ascii=False) for r in results) + "\n",
         encoding="utf-8")
     write_report(out_dir, results, configs, model_name, args.repeats, args.offline,
-                 tasks, args.framework)
+                 tasks, args.framework, judged=judge_fn is not None)
     write_chart(out_dir, results, configs, args.framework)
 
     print(t("r.summary"))
@@ -392,4 +444,17 @@ def parse_args(argv=None):
     parser.add_argument("--framework", default="mini-agents",
                         choices=["mini-agents", "langgraph", "agents-sdk"],
                         help=t("r.help_framework"))
+    parser.add_argument("--judge", action="store_true",
+                        help=t("r.help_judge"))
     return parser.parse_args(argv)
+
+
+async def _run_judge(out_dir, config, task, repeat, answer):
+    """评委一次调用：独立 trace 文件（评分过程可回放），token 单独计量不混入被测配置。"""
+    from .judge import judge_answer
+
+    jt_trace = TraceLogger(
+        out_dir / f"judge--{config}--{task.id}--r{repeat}.trace.jsonl", echo=False)
+    score, reason = await judge_answer(LLM(trace=jt_trace), task.prompt, answer)
+    tokens, _ = _usage_total(jt_trace)
+    return score, reason, tokens

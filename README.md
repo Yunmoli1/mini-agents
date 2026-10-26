@@ -82,11 +82,12 @@ python demo_mcp.py
 ## 评测
 
 四组配置共享同一提示词与工具集、只切换执行器（串行 / 并行 / 编排 / 编排+审查），
-18 个任务全部程序化判分：
+18 个任务全部程序化判分；`--judge` 可再让 LLM 评委对每个回答盲评质量分（0~10）：
 
 ```bash
-python -m evals --offline   # 离线自检：免费验证评测管线与判分逻辑
-python -m evals             # 真实评测（需 .env）
+python -m evals --offline        # 离线自检：免费验证评测管线与判分逻辑
+python -m evals                  # 真实评测（需 .env）
+python -m evals --judge          # 真实评测 + LLM 评委质量分（评委 tokens 单独计量）
 ```
 
 ### 实测结果（2026-10-25，deepseek-v4.1-flash-1017 @ 共享限流网关，18 任务 × 4 配置，一次完整运行）
@@ -107,7 +108,8 @@ python -m evals             # 真实评测（需 .env）
   本轮共触发 95 次，将受限流通道下的任务完成率从 11%（8/72）提升到 96%（69/72）。
 - **审查循环的成本收益要分开看**。+75% tokens 换来的是同样的 94% 成功率——
   在强模型 + 可程序化判分的任务上没有可测收益；它的价值预期在弱模型与
-  开放性任务上，待 LLM-as-judge 评测补充。
+  开放性任务上，现可用 `python -m evals --judge` 的 LLM 评委质量分补充验证
+  （冒烟实测：程序判分通过的回答也会被评委按指令遵循扣分，见 [DECISIONS.md](DECISIONS.md) #22）。
 - **计数是 LLM 的真实短板**。唯一在三个配置同时失败的任务是"统计词频出现 9 次"
   （f4）——LLM 的计数弱点在多 Agent 编排下也未必能补救（仅 orchestrated 偶然通过）。
 
@@ -195,11 +197,12 @@ python demo_research_team.py --resume runs/<时间戳>   # 中途挂了？从断
 
 - [x] RAG 工具：BM25 版已落地（`mini_agents/rag.py`）；embedding 混合检索留有接入口
 - [x] 多模型成本路由：`research_pipeline(researcher_llm=...)` + 成本场景核算 demo
-- [ ] 评测扩展 LLM-as-judge，覆盖开放性任务（也是成本路由"成功率"轴的前提）
+- [x] 评测扩展 LLM-as-judge：`--judge` 盲评质量分（0~10），补齐成本路由帕累托的质量轴
 - [ ] MCP Streamable HTTP 传输与鉴权
 - [ ] Handoffs 流水线模式（与黑板模式做成本对比）
-- [ ] 调研员搜索持续失败时的早停机制（实测：通道限流导致搜索反复失败时，
-      模型会换关键词重试直至烧满 15 轮上限——需要循环层识别无效重试并提前止损）
+- [x] 调研员搜索持续失败时的早停机制：`Agent(fail_fast_turns=N)`，
+      连续 N 轮全部工具失败即止损（工具失败约定：降级返回 `{"error": ...}`，
+      见 [DECISIONS.md](DECISIONS.md) #21）
 
 ## License
 

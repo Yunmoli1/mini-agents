@@ -59,9 +59,11 @@ def aggregate(rows, config):
     if not rs:
         return None
     n = len(rs)
+    scores = [r["quality"] for r in rs if r.get("quality") is not None]
     return {"success": sum(r["success"] for r in rs), "n": n,
             "tokens": sum(r["tokens"] for r in rs) / n,
-            "seconds": sum(r["seconds"] for r in rs) / n}
+            "seconds": sum(r["seconds"] for r in rs) / n,
+            "quality": (sum(scores) / len(scores)) if scores else None}
 
 
 def main():
@@ -99,7 +101,9 @@ def main():
         aggs = {fw: a for fw, a in aggs.items() if a}
         for metric_key, fmt in (("c.success", lambda a: f"{a['success'] / a['n']:.0%}"),
                                 ("c.tokens", lambda a: f"{a['tokens']:.0f}"),
-                                ("c.seconds", lambda a: f"{a['seconds']:.1f}s")):
+                                ("c.seconds", lambda a: f"{a['seconds']:.1f}s"),
+                                ("c.quality", lambda a: "-" if a.get("quality") is None
+                                 else f"{a['quality']:.1f}")):
             cells = []
             for fw in picks:
                 a = aggs.get(fw)
