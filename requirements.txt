@@ -5,3 +5,5 @@ matplotlib>=3.7  # 评测对比图用；不装则评测跳过图表
 streamlit>=1.35  # 网页演示（app.py）用；只跑命令行可不装
 rank-bm25>=0.2.2 # RAG 知识库检索（BM25，纯本地）
 jieba>=0.42      # 中文分词（RAG）；未装时自动退化为二字切片
+pypdf>=4.0       # 助手对话读 PDF；不装则上传 pdf 会提示错误
+python-docx>=1.1 # 助手对话读 Word（docx）；不装则上传 docx 会提示错误

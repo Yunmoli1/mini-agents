@@ -73,6 +73,10 @@ class KnowledgeBase:
         return [{"source": c["source"], "score": round(float(s), 3), "text": c["text"]}
                 for s, c in ranked[:top_k] if s > 0]
 
+    def sources(self):
+        """知识库来源文件名列表（去重排序），给对话页展示用。"""
+        return sorted({c["source"].split("#")[0] for c in self.chunks})
+
 
 def make_knowledge_tool(kb: KnowledgeBase):
     """把知识库包装成 Agent 工具：返回带来源标记的相关片段。"""

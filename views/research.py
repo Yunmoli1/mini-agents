@@ -17,7 +17,7 @@ import streamlit as st
 from demo_research_team import MAX_REVISIONS, research_pipeline
 from mini_agents import Blackboard, TraceLogger, describe_event
 from mini_agents.i18n import t
-from views._shared import render_lang_switcher
+from views._shared import render_lang_switcher, render_model_settings
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 _AGENT_STYLES = [
@@ -91,6 +91,7 @@ def render_usage(usage):
 
 def main():
     render_lang_switcher()
+    render_model_settings()
     st.title(t("res.title"))
     st.caption(t("res.caption"))
 
