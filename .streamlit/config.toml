@@ -1,0 +1,8 @@
+# Streamlit 本地运行配置：关掉商业化入口与遥测
+[client]
+# minimal：工具栏只留运行状态，隐藏 Deploy 按钮/菜单（2026-10-27 用户要求）
+toolbarMode = "minimal"
+
+[browser]
+# 不向 Streamlit 官方发送使用统计
+gatherUsageStats = false

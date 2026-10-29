@@ -9,9 +9,7 @@ import streamlit as st
 from evals.compare import CONFIG_ORDER, aggregate, load_runs, pick_best
 from mini_agents.i18n import t
 from views._shared import render_lang_switcher
-from views._shared import render_lang_switcher
 
-render_lang_switcher()
 render_lang_switcher()
 st.title(t("dash.title"))
 st.caption(t("dash.caption"))
