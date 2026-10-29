@@ -49,7 +49,7 @@ _STRINGS = {
         "cfg.model": "模型名",
         "cfg.save": "保存配置",
         "cfg.saved": "已写入 .env 并即时生效 ✔（CLI、启动器、评测共用此配置）",
-        "cfg.current": "当前生效：{model} @ {url}",
+        "cfg.current": "当前生效：{model} @ `{url}`（API 端点，浏览器打开会 404，属正常）",
         # ── 深度调研页 ──
         "res.title": "🎯 深度调研小组",
         "res.caption": ("从零手写的多 Agent 框架：Planner 拆解 → 多名 Researcher 并行调研 → "
@@ -286,7 +286,7 @@ _STRINGS = {
         "cfg.model": "Model name",
         "cfg.save": "Save settings",
         "cfg.saved": "Written to .env and effective immediately ✔ (shared by CLI, launcher and evals)",
-        "cfg.current": "Active: {model} @ {url}",
+        "cfg.current": "Active: {model} @ `{url}` (API endpoint — browsers show 404, that's normal)",
         "res.title": "🎯 Research Squad",
         "res.caption": ("From-scratch multi-agent framework: Planner decomposes → parallel Researchers → "
                         "Writer drafts ⇄ Reviewer pushes back. The timeline below is a live view of trace.jsonl."),
